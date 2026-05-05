@@ -167,17 +167,17 @@ The last line printed is a model `.pt` path you can copy directly.
 ### 5) GNN inference timing (latency profiling)
 
 
-Pick a model file from `results_gnn/.../<feature_config>/` and run:
+Pick a model file from `<results_dir>/.../<feature_config>/` and run:
 ```
 python -m gdl_cmdline.scripts.gnn_inference \
-  --model-path results_gnn/<timestamp>/<test_size>/seed<seed>/<ft>/<ea>/<embedder>/<feature_config>/RGCN_standard_model.pt \
+  --model-path <results_dir>/<timestamp>/<test_size>/seed<seed>/<ft>/<ea>/<embedder>/<feature_config>/RGCN_standard_model.pt \
   --csv dummy_data/test_clean_unique.csv
 ```
 You can also run the same search filters as `find_gnn_runs` (use `--seed` to pick
 a specific seed; otherwise the first match is used):
 ```
 python -m gdl_cmdline.scripts.gnn_inference \
-  --results-root results_gnn \
+  --results-root results_rgcn_all_features  \
   --feature-config semantic_only \
   --edge-ablation-label all \
   --model rgcn \
@@ -189,7 +189,7 @@ python -m gdl_cmdline.scripts.gnn_inference \
 Point `--results-dir` to the folder that contains the `*_model.pt` files for a single feature configuration, or pass a single `--model-path` file (the script uses the parent directory to infer the config).
 ```
 python -m gdl_cmdline.scripts.inference \
-  --model-path "results_gnn/<timestamp>/<test_size>/seed<seed>/<ft>/<ea>/<embedder>/<feature_config>/RGCN_standard_model.pt" \
+  --model-path "<results_dir>/<timestamp>/<test_size>/seed<seed>/<ft>/<ea>/<embedder>/<feature_config>/RGCN_standard_model.pt" \
   --clean-csv dummy_data/clean_unique.csv \
   --malware-csv dummy_data/malware_unique.csv \
   --test-clean-csv dummy_data/test_clean_unique.csv \
@@ -198,7 +198,7 @@ python -m gdl_cmdline.scripts.inference \
 You can also reuse the search filters (same as `find_gnn_runs`) to pick a model:
 ```
 python -m gdl_cmdline.scripts.inference \
-  --results-root results_gnn \
+  --results-root results_rgcn_all_features  \
   --feature-config semantic_only \
   --edge-ablation-label all \
   --model rgcn \

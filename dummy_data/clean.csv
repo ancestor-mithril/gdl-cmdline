@@ -1,0 +1,11 @@
+command_line
+"cmd.exe /c dir C:\Users\Public\Documents /s /b"
+"powershell.exe -Command ""Get-ChildItem -Path C:\Temp -Recurse -File"""
+"cmd.exe /c copy C:\temp\source.txt C:\backup\dest.txt /Y"
+"powershell.exe -Command ""Copy-Item -Path C:\Logs\*.log -Destination D:\Archive"""
+"cmd.exe /c mkdir C:\NewFolder\SubFolder\Documents 2>nul"
+"powershell.exe -Command ""New-Item -Path C:\Temp\NewFile.txt -ItemType File"""
+"cmd.exe /c type C:\Windows\System32\drivers\etc\hosts | more"
+"powershell.exe -Command ""Get-Content -Path C:\Logs\app.log -Tail 50"""
+"cmd.exe /c xcopy C:\Source D:\Destination /E /I /Y"
+"powershell.exe -NoProfile -Command ""Test-Path -Path C:\Windows\System32\notepad.exe"""

@@ -1,0 +1,11 @@
+command_line
+"('powershell.exe', '-NoProfile', '-Command', ('Test-Path', '-Path', 'C:\\Windows\\System32\\notepad.exe'))"
+"('powershell.exe', '-Command', ('New-Item', '-Path', 'C:\\Temp\\NewFile.txt', '-ItemType', 'File'))"
+"('powershell.exe', '-Command', ('Get-Content', '-Path', 'C:\\Logs\\app.log', '-Tail', '50'))"
+"('powershell.exe', '-Command', ('Get-ChildItem', '-Path', 'C:\\Temp', '-Recurse', '-File'))"
+"('powershell.exe', '-Command', ('Copy-Item', '-Path', 'C:\\Logs\\*.log', '-Destination', 'D:\\Archive'))"
+"('cmd.exe', '/c', 'xcopy', 'C:\\Source', 'D:\\Destination', '/E', 'ü', '/Y')"
+"('cmd.exe', '/c', 'type', 'C:\\Windows\\System32\\drivers\\etc\\hosts', '|', 'more')"
+"('cmd.exe', '/c', 'mkdir', 'C:\\NewFolder\\SubFolder\\Documents', '2>nul')"
+"('cmd.exe', '/c', 'dir', 'C:\\Users\\Public\\Documents', '/s', '/b')"
+"('cmd.exe', '/c', 'copy', 'C:\\temp\\source.txt', 'C:\\backup\\dest.txt', '/Y')"

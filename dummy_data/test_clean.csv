@@ -1,0 +1,11 @@
+command_line
+"cmd.exe /c tasklist /FI ""IMAGENAME eq notepad.exe"" /V"
+"powershell.exe -Command ""Get-Process | Sort-Object CPU -Descending | Select -First 10"""
+"cmd.exe /c wmic process where ""name='chrome.exe'"" get processid, commandline"
+"powershell.exe -Command ""Get-Service | Where-Object Status -eq 'Running'"""
+"cmd.exe /c sc query type= service state= active"
+"powershell.exe -Command ""Get-Process -Name explorer | Format-List Name, Id, Path"""
+"cmd.exe /c tasklist /v /fo csv > C:\temp\tasks.csv"
+"powershell.exe -ExecutionPolicy Bypass -Command ""Get-EventLog -LogName System -Newest 20"""
+"cmd.exe /c wmic service where ""startmode='Auto'"" get name, state"
+"powershell.exe -NoProfile -Command ""Get-ScheduledTask | Where-Object State -eq 'Ready'"""

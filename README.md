@@ -32,7 +32,8 @@ python -m gdl_cmdline.preprocess.make_unique dummy_data
 ### 2) Training recipes (GNN + baselines)
 
 All commands below write results into their `--results-dir` folders, including
-`experiment_summary.csv` and confusion matrices.
+`experiment_summary.csv` and confusion matrices. You can pass multiple seeds as
+`--seed 3 7 42` to run all three seeds in one command.
 
 All GNN models, semantic features, all edges:
 ```
@@ -44,7 +45,8 @@ python -m gdl_cmdline.scripts.train_gnn \
   --results-dir results_gnn_semantic_all_edges \
   --model all \
   --feature-type semantic_only \
-  --edge-ablation all
+  --edge-ablation all \
+  --seed 3 7 42
 ```
 
 RGCN with semantic features, sweep all edge ablations:
@@ -57,7 +59,8 @@ python -m gdl_cmdline.scripts.train_gnn \
   --results-dir results_rgcn_semantic_edges \
   --model rgcn \
   --feature-type semantic_only \
-  --edge-ablation all self_loops_only self_loops_parent_child self_loops_sequential
+  --edge-ablation all self_loops_only self_loops_parent_child self_loops_sequential \
+  --seed 3 7 42
 ```
 
 RGCN with syntactic features, sweep all edge ablations:
@@ -70,7 +73,8 @@ python -m gdl_cmdline.scripts.train_gnn \
   --results-dir results_rgcn_syntactic_edges \
   --model rgcn \
   --feature-type syntactic_only \
-  --edge-ablation all self_loops_only self_loops_parent_child self_loops_sequential
+  --edge-ablation all self_loops_only self_loops_parent_child self_loops_sequential \
+  --seed 3 7 42
 ```
 
 RGCN with all node feature combinations, all edges:
@@ -83,7 +87,8 @@ python -m gdl_cmdline.scripts.train_gnn \
   --results-dir results_rgcn_all_features \
   --model rgcn \
   --feature-type all \
-  --edge-ablation all
+  --edge-ablation all \
+  --seed 3 7 42
 ```
 
 BERT and StaticModel baselines:
@@ -94,7 +99,8 @@ python -m gdl_cmdline.scripts.train_bert \
   --test-malware-csv dummy_data/test_malware_unique.csv \
   --test-clean-csv dummy_data/test_clean_unique.csv \
   --results-dir results_bert \
-  --model bert static
+  --model bert static \
+  --seed 3 7 42
 ```
 
 Logistic Regression + manual features:
@@ -104,7 +110,8 @@ python -m gdl_cmdline.scripts.train_manual_features \
   --clean-csv dummy_data/clean_unique.csv \
   --test-malware-csv dummy_data/test_malware_unique.csv \
   --test-clean-csv dummy_data/test_clean_unique.csv \
-  --results-dir results_manual
+  --results-dir results_manual \
+  --seed 3 7 42
 ```
 
 Logistic Regression + TF-IDF (char + word):
@@ -115,7 +122,8 @@ python -m gdl_cmdline.scripts.train_tfidf \
   --test-malware-csv dummy_data/test_malware_unique.csv \
   --test-clean-csv dummy_data/test_clean_unique.csv \
   --results-dir results_tfidf \
-  --analyzers char word
+  --analyzers char word \
+  --seed 3 7 42
 ```
 
 ### 3) Count model parameters

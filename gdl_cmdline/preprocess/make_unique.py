@@ -256,6 +256,7 @@ if __name__ == "__main__":
         result = process_csv(
             os.path.join(data_path, f"{type}.csv"),
             os.path.join(data_path, f"{output_type}_unique.csv"),
+            False,
             args.njobs,
         )
         print("\n" + "=" * 60)

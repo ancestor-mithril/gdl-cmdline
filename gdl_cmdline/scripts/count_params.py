@@ -2,9 +2,10 @@
 Count learnable / frozen / total parameters for all model configurations.
 
 Covers:
-- BERTClassifier (from train_bert.py): frozen BERT backbone + trainable head
-- GNN variants (GCN, GraphSAGE, GIN, GAT, RGCN) across all feature configs
-  For semantic configs the StaticModel (model2vec) embedder params are included as frozen.
+- BERTClassifier: frozen BERT backbone + trainable head
+- LSTMClassifier: trainable embedding + 2-layer bidirectional LSTM + head
+- StaticModelClassifier: frozen Model2Vec embedder + trainable head
+- GNN variants (GCN, GraphSAGE, GIN, GAT, RGCN) across feature configs
 
 No data preprocessing required.
 
@@ -12,6 +13,8 @@ Usage:
     python graph/count_params.py
     python graph/count_params.py --hidden-dim 256 --num-layers 4
     python graph/count_params.py --model gin --feature-type semantic_only positional_only
+    python graph/count_params.py --model lstm
+    python graph/count_params.py --model bert lstm
 """
 
 import argparse
@@ -22,16 +25,25 @@ import torch.nn as nn
 from model2vec import StaticModel
 
 from gdl_cmdline.scripts.train_gnn import (
-    GCNModel, GraphSAGEModel, GINModel, GATModel, RGCNModel,
-    FEATURE_TYPE_MAP, EDGE_ABLATION_MAP,
+    GCNModel,
+    GraphSAGEModel,
+    GINModel,
+    GATModel,
+    RGCNModel,
+    FEATURE_TYPE_MAP,
+    EDGE_ABLATION_MAP,
 )
-from gdl_cmdline.scripts.train_bert import BERTClassifier, StaticModelClassifier
+from gdl_cmdline.scripts.train_bert import (
+    BERTClassifier,
+    LSTMClassifier,
+    StaticModelClassifier,
+)
 
-SEMANTIC_DIM = 64   # potion-base-2M output dimension
-POSITIONAL_DIM = 4  # depth, is_leaf, is_root, subtree_size
-DEGREE_DIM = 4      # in_degree, out_degree, total_degree, normalized_degree
-TOKEN_DIM = 15      # length, entropy, is_arg, is_extension, ...
 
+SEMANTIC_DIM = 64
+POSITIONAL_DIM = 4
+DEGREE_DIM = 4
+TOKEN_DIM = 15
 STRUCT_DIM = POSITIONAL_DIM + DEGREE_DIM
 
 
@@ -56,8 +68,6 @@ def count_parameters(model: nn.Module) -> tuple[int, int]:
 def get_static_model_params(model_name: str = "minishlab/potion-base-2M") -> int:
     """Count parameters in the StaticModel used as the GNN embedder."""
     model = StaticModel.from_pretrained(model_name)
-    # StaticModel is not an nn.Module -- its only parameter is the
-    # static embedding matrix stored as a numpy array.
     embedding = model.embedding
     weights = model.weights
     total = int(np.prod(embedding.shape))
@@ -79,16 +89,36 @@ def main():
     parser.add_argument("--dropout", type=float, default=0.5)
     parser.add_argument("--bert-model", type=str, default="bert-base-uncased")
     parser.add_argument("--static-model", type=str, default="minishlab/potion-base-2M")
+    parser.add_argument("--max-length", type=int, default=512)
+    parser.add_argument("--lstm-embedding-size", type=int, default=64)
     parser.add_argument(
-        "--model", type=str, nargs="+", default=["all"],
-        choices=["gcn", "graphsage", "gin", "gat", "rgcn", "bert", "static", "all"],
+        "--model",
+        type=str,
+        nargs="+",
+        default=["all"],
+        choices=[
+            "gcn",
+            "graphsage",
+            "gin",
+            "gat",
+            "rgcn",
+            "bert",
+            "lstm",
+            "static",
+            "all",
+        ],
     )
     parser.add_argument(
-        "--feature-type", type=str, nargs="+", default=["all"],
+        "--feature-type",
+        type=str,
+        nargs="+",
+        default=["all"],
         choices=list(FEATURE_TYPE_MAP.keys()) + ["all"],
     )
     parser.add_argument(
-        "--edge-ablation", type=str, default="all",
+        "--edge-ablation",
+        type=str,
+        default="all",
         choices=list(EDGE_ABLATION_MAP.keys()),
     )
     args = parser.parse_args()
@@ -102,11 +132,16 @@ def main():
     ])
 
     include_bert = "all" in args.model or "bert" in args.model
+    include_lstm = "all" in args.model or "lstm" in args.model
     include_static = "all" in args.model or "static" in args.model
     selected_gnns = (
         all_gnn_models
         if "all" in args.model
-        else OrderedDict((k, all_gnn_models[k]) for k in args.model if k not in ("bert", "static"))
+        else OrderedDict(
+            (key, all_gnn_models[key])
+            for key in args.model
+            if key in all_gnn_models
+        )
     )
 
     selected_features = (
@@ -114,79 +149,120 @@ def main():
         if "all" in args.feature_type
         else args.feature_type
     )
-
     num_relations = len(EDGE_ABLATION_MAP[args.edge_ablation])
 
-    # Pre-compute StaticModel embedder param count (frozen overhead for semantic GNN configs)
-    print(f"Loading {args.static_model} to count parameters...")
-    static_embedder_params = get_static_model_params(args.static_model)
-    print(f"StaticModel embedder: {static_embedder_params:,} params (embedding dim={SEMANTIC_DIM})")
+    # Load Model2Vec only when a selected configuration requires it.
+    semantic_gnn_selected = bool(selected_gnns) and any(
+        FEATURE_TYPE_MAP[feature_type][0] for feature_type in selected_features
+    )
+    needs_static_embedder = include_static or semantic_gnn_selected
+    static_embedder_params = 0
+    if needs_static_embedder:
+        print(f"Loading {args.static_model} to count parameters...")
+        static_embedder_params = get_static_model_params(args.static_model)
+        print(
+            f"StaticModel embedder: {static_embedder_params:,} params "
+            f"(embedding dim={SEMANTIC_DIM})"
+        )
 
     sep = "=" * 112
     thin_sep = "-" * 112
-    hdr = (f"{'Model':<18} {'Feature Config':<35} {'input':>5}  "
-           f"{'Trainable':>14}  {'Frozen':>14}  {'Total':>14}")
+    header = (
+        f"{'Model':<18} {'Feature Config':<35} {'input':>5}  "
+        f"{'Trainable':>14}  {'Frozen':>14}  {'Total':>14}"
+    )
 
-    print(f"\nSettings: hidden_dim={args.hidden_dim}, num_layers={args.num_layers}, "
-          f"edge_ablation={args.edge_ablation} ({num_relations} rel), "
-          f"embedder={args.static_model}")
+    print(
+        f"\nSettings: hidden_dim={args.hidden_dim}, "
+        f"num_layers={args.num_layers}, "
+        f"edge_ablation={args.edge_ablation} ({num_relations} rel), "
+        f"embedder={args.static_model}"
+    )
     print(sep)
-    print(hdr)
+    print(header)
     print(sep)
 
-    # --- BERTClassifier (standalone baseline, from train_bert.py) ---
     if include_bert:
-        model = BERTClassifier(model_name=args.bert_model, num_classes=args.num_classes)
+        model = BERTClassifier(
+            model_name=args.bert_model,
+            num_classes=args.num_classes,
+            dropout=args.dropout,
+            max_length=args.max_length,
+        )
         trainable, frozen = count_parameters(model)
         total = trainable + frozen
-        print(f"{model.name:<18} {'(full model, head trainable)':<35} {'768':>5}  "
-              f"{fmt(trainable)}  {fmt(frozen)}  {fmt(total)}")
+        bert_hidden_size = model.bert.config.hidden_size
+        print(
+            f"{model.name:<18} {'(frozen backbone, head trainable)':<35} "
+            f"{bert_hidden_size:>5}  {fmt(trainable)}  {fmt(frozen)}  {fmt(total)}"
+        )
         del model
         print(thin_sep)
 
-    # --- StaticModelClassifier (standalone baseline, from train_bert.py) ---
+    if include_lstm:
+        model = LSTMClassifier(
+            tokenizer_name=args.bert_model,
+            num_classes=args.num_classes,
+            embedding_size=args.lstm_embedding_size,
+            hidden_size=64,
+            num_layers=2,
+            dropout=args.dropout,
+            max_length=args.max_length,
+        )
+        trainable, frozen = count_parameters(model)
+        total = trainable + frozen
+        print(
+            f"{model.name:<18} {'(2-layer bidirectional, all trainable)':<35} "
+            f"{args.lstm_embedding_size:>5}  "
+            f"{fmt(trainable)}  {fmt(frozen)}  {fmt(total)}"
+        )
+        del model
+        print(thin_sep)
+
     if include_static:
-        model = StaticModelClassifier(embedder_model=args.static_model, num_classes=args.num_classes)
+        model = StaticModelClassifier(
+            embedder_model=args.static_model,
+            num_classes=args.num_classes,
+            dropout=args.dropout,
+        )
         trainable, frozen = count_parameters(model)
-        
-        # The StaticModel embedder parameters are not registered as nn.Module parameters,
-        # so we add them manually to the frozen count.
         frozen += static_embedder_params
-        
         total = trainable + frozen
-        print(f"{model.name:<18} {'(frozen embedder, head trainable)':<35} {str(SEMANTIC_DIM):>5}  "
-              f"{fmt(trainable)}  {fmt(frozen)}  {fmt(total)}")
+        print(
+            f"{model.name:<18} {'(frozen embedder, head trainable)':<35} "
+            f"{SEMANTIC_DIM:>5}  {fmt(trainable)}  {fmt(frozen)}  {fmt(total)}"
+        )
         del model
         print(thin_sep)
 
-    # --- GNN models across feature configs ---
-    for ft_name in selected_features:
-        use_sem, use_pos, use_tok = FEATURE_TYPE_MAP[ft_name]
-        in_dim = input_dim_for(use_sem, use_pos, use_tok)
+    for feature_type in selected_features:
+        use_semantic, use_positional, use_token = FEATURE_TYPE_MAP[feature_type]
+        input_dim = input_dim_for(use_semantic, use_positional, use_token)
 
-        for model_key, model_cls in selected_gnns.items():
+        for _, model_class in selected_gnns.items():
             kwargs = dict(
-                input_dim=in_dim,
+                input_dim=input_dim,
                 hidden_dim=args.hidden_dim,
                 num_classes=args.num_classes,
                 dropout=args.dropout,
                 num_layers=args.num_layers,
             )
-            if model_cls is RGCNModel:
+            if model_class is RGCNModel:
                 kwargs["num_relations"] = num_relations
 
-            model = model_cls(**kwargs)
+            model = model_class(**kwargs)
             trainable, frozen = count_parameters(model)
-
-            if use_sem:
+            if use_semantic:
                 frozen += static_embedder_params
-
             total = trainable + frozen
-            print(f"{model.name:<18} {ft_name:<35} {in_dim:>5}  "
-                  f"{fmt(trainable)}  {fmt(frozen)}  {fmt(total)}")
+            print(
+                f"{model.name:<18} {feature_type:<35} {input_dim:>5}  "
+                f"{fmt(trainable)}  {fmt(frozen)}  {fmt(total)}"
+            )
             del model
 
-        print(thin_sep)
+        if selected_gnns:
+            print(thin_sep)
 
     print()
 

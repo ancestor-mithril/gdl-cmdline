@@ -572,7 +572,7 @@ def main() -> None:
     )
     parser.add_argument("--bert-model", default="bert-base-uncased")
     parser.add_argument("--max-length", type=int, default=512)
-    parser.add_argument("--lstm-embedding-size", type=int, default=128)
+    parser.add_argument("--lstm-embedding-size", type=int, default=64)
     parser.add_argument("--embedder-model", default="minishlab/potion-base-2M")
     parser.add_argument("--lr", type=float, default=2e-5)
     parser.add_argument("--lstm-lr", type=float, default=1e-3)

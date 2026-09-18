@@ -91,7 +91,7 @@ python -m gdl_cmdline.scripts.train_gnn \
   --seed 3 7 42
 ```
 
-BERT and StaticModel baselines:
+LSTM, BERT and StaticModel baselines:
 ```
 python -m gdl_cmdline.scripts.train_bert \
   --malware-csv dummy_data/malware_unique.csv \
@@ -99,7 +99,7 @@ python -m gdl_cmdline.scripts.train_bert \
   --test-malware-csv dummy_data/test_malware_unique.csv \
   --test-clean-csv dummy_data/test_clean_unique.csv \
   --results-dir results_bert \
-  --model bert static \
+  --model bert static lstm \
   --seed 3 7 42
 ```
 

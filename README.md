@@ -2,6 +2,8 @@
 
 Command-line malware detection experiments (GNN + baselines) with a small preprocessing pipeline. The repository includes `dummy_data/` for quick end-to-end runs. The dummy dataset is synthetic and contains no malware; it is only for demonstration purposes.
 
+For a meaningful comparison, use a real command line malware dataset.
+
 ## Data layout
 
 `dummy_data/` contains four CSVs:
